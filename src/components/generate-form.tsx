@@ -9,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { generatePersonalizedBucketList } from '@/ai/flows/generate-bucket-list';
 import type { BucketListItemType } from '@/lib/types';
@@ -27,13 +27,11 @@ const formSchema = z.object({
   }).max(500, {
     message: 'Please keep your interests under 500 characters.'
   }),
-  limitations: z.string().max(500, {
-    message: 'Please keep your limitations under 500 characters.'
-  }).optional(),
+  budget: z.string().optional(),
 });
 
 type GenerateFormProps = {
-  setBucketList: (list: Omit<BucketListItemType, 'status'>[]) => void;
+  setBucketList: (list: BucketListItemType[]) => void;
   setIsLoading: (loading: boolean) => void;
 };
 
@@ -44,7 +42,7 @@ export function GenerateForm({ setBucketList, setIsLoading }: GenerateFormProps)
     resolver: zodResolver(formSchema),
     defaultValues: {
       interests: 'hiking in mountains, trying exotic foods, learning new languages',
-      limitations: '',
+      budget: '',
     },
   });
 
@@ -55,9 +53,10 @@ export function GenerateForm({ setBucketList, setIsLoading }: GenerateFormProps)
     setBucketList([]);
     try {
       const result = await generatePersonalizedBucketList(values);
-      const newBucketList = result.bucketListItems.map(item => ({
+      const newBucketList: BucketListItemType[] = result.bucketListItems.map(item => ({
         ...item,
         id: crypto.randomUUID(),
+        status: 'To Do',
       }));
       setBucketList(newBucketList);
     } catch (error) {
@@ -96,6 +95,22 @@ export function GenerateForm({ setBucketList, setIsLoading }: GenerateFormProps)
                       <Textarea
                         placeholder="e.g., hiking, exotic foods, photography..."
                         className="resize-none h-28"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="budget"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base">Budget (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., $1000, 'frugal', 'no limit'"
                         {...field}
                       />
                     </FormControl>
