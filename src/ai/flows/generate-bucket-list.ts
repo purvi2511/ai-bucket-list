@@ -10,15 +10,13 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { generateActivityImage } from './generate-activity-image';
 
 const GeneratePersonalizedBucketListInputSchema = z.object({
   interests: z
     .string()
     .describe('A comma-separated list of the user\'s interests and preferences.'),
-  limitations: z
-    .string()
-    .optional()
-    .describe('Any limitations or constraints the user has (e.g., budget, time, physical limitations).'),
+  budget: z.string().optional().describe('The user\'s budget for the activities.'),
 });
 export type GeneratePersonalizedBucketListInput = z.infer<typeof GeneratePersonalizedBucketListInputSchema>;
 
@@ -27,6 +25,7 @@ const GeneratePersonalizedBucketListOutputSchema = z.object({
     z.object({
       activity: z.string().describe('The name of the activity.'),
       description: z.string().describe('A brief description of the activity.'),
+      imageUrl: z.string().optional().describe('URL of an image representing the activity.'),
     })
   ).describe('A list of personalized bucket list items.'),
 });
@@ -44,10 +43,12 @@ const prompt = ai.definePrompt({
   output: {schema: GeneratePersonalizedBucketListOutputSchema},
   prompt: `You are a bucket list expert, skilled at creating personalized lists of activities and experiences for users.
 
-  Based on the user's interests and preferences, and taking into account any limitations they have, generate a list of bucket list items.
+  Based on the user's interests and preferences, and budget, generate a list of bucket list items.
 
   Interests and Preferences: {{{interests}}}
-  Limitations: {{{limitations}}}
+  {{#if budget}}
+  Budget: {{{budget}}}
+  {{/if}}
 
   Format the output as a JSON array of bucket list items, where each item has an activity and description.
   `,
@@ -61,6 +62,21 @@ const generatePersonalizedBucketListFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("Failed to generate bucket list");
+    }
+
+    const imageGenerationPromises = output.bucketListItems.map(item =>
+      generateActivityImage({ activity: item.activity })
+        .then(imageResult => ({ ...item, imageUrl: imageResult.imageUrl }))
+        .catch(() => item)
+    );
+    
+    const itemsWithImages = await Promise.all(imageGenerationPromises);
+
+    return {
+      bucketListItems: itemsWithImages
+    };
   }
 );
+
