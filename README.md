@@ -1,5 +1,1 @@
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+[link](https://ai-bucket-list-git-test-branch-purvis-projects-1a9a9d62.vercel.app/)
